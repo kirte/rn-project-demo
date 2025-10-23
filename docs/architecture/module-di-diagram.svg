@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="400"><rect width="100%" height="100%" fill="#fff"/><text x="20" y="40" font-size="18" font-family="Arial">Module & DI Diagram</text><text x="20" y="70" font-size="12" font-family="Arial">Container registers ApiService, AuthService, Repositories. Features request services by key.</text></svg>

@@ -1,0 +1,1 @@
+export class ChatSessionService { static lifecycle='transient'; static dependencies=[]; private sessionId = `s-${Math.random().toString(36).slice(2,8)}`; init(deps:any){} async sendMessage(text:string){ return { reply:`Echo(${this.sessionId}): ${text}` }; } }
