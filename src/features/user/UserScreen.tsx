@@ -3,10 +3,10 @@ import { View, Text, ActivityIndicator, Button, StyleSheet } from 'react-native'
 import { useService } from '../../core/hooks/useService';
 import { UserRepository } from './UserRepository';
 import { ApiResult } from '../../core/api/ApiResult';
-import { TYPES } from '../../core/di/types';
+import { UserTypes } from './di/types';
 
 export const UserScreen: React.FC = () => {
-  const userRepo = useService<UserRepository>(TYPES.UserRepository);
+  const userRepo = useService<UserRepository>(UserTypes.UserRepository);
   const [result, setResult] = useState<ApiResult<any>>({ type: 'Loading' });
   const load = async () => { setResult({ type: 'Loading' }); const res = await userRepo.getUser('1'); setResult(res); };
   useEffect(() => { load(); }, []);

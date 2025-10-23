@@ -1,3 +1,6 @@
+import { injectable } from 'inversify';
+
+@injectable()
 export class AuthService {
   private token: string | null = null;
   private refreshToken: string | null = null;

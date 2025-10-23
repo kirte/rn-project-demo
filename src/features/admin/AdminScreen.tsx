@@ -3,10 +3,10 @@ import { View, Text, Button } from 'react-native';
 import { useService } from '../../core/hooks/useService';
 import { AdminRepository } from './AdminRepository';
 import { ApiResult } from '../../core/api/ApiResult';
-import { TYPES } from '../../core/di/types';
+import { AdminTypes } from './di/types';
 
 export const AdminScreen: React.FC = () => {
-  const repo = useService<AdminRepository>(TYPES.AdminRepository);
+  const repo = useService<AdminRepository>(AdminTypes.AdminRepository);
   const [res, setRes] = useState<ApiResult<any>>({ type: 'Loading' });
   const load = async () => { const r = await repo.getDashboard(); setRes(r); };
   useEffect(() => { load(); }, []);
