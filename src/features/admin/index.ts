@@ -1,8 +1,24 @@
-// Admin Feature Module
-// This file serves as the public API for the admin feature
+/**
+ * Admin Feature Entry Point
+ * 
+ * Features self-register here during module initialization.
+ * No changes needed in core when adding this feature!
+ */
 
-// Initialize DI container for this feature
-import './di/container';
+import { featureRegistry } from '../../core/di/featureRegistry';
+
+// Self-register this feature with the registry
+featureRegistry.register({
+    name: 'admin',
+    description: 'Admin dashboard and management',
+    version: '1.0.0',
+    loader: async () => {
+        const module = await import('./di/admin.module');
+        return module.AdminFeatureModule;
+    },
+    dependencies: ['auth'], // Admin feature depends on auth
+    tags: ['admin', 'management'],
+});
 
 // Export types
 export { AdminTypes } from './di/types';
@@ -17,9 +33,5 @@ export { AdminRepository } from './repositories/AdminRepository';
 export { AdminNavigator, AdminRoutes } from './navigation/navigation';
 export type { AdminStackParamList } from './navigation/navigation';
 
-// Optional: Export a feature initialization function
-export const initAdminFeature = () => {
-    console.log('Admin feature initialized');
-    // Any additional setup logic can go here
-};
-
+// Note: Feature is registered but NOT loaded yet (lazy loading)
+// It will load when first accessed via ensureFeatureLoaded('admin')

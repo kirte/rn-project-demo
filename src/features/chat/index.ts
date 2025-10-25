@@ -1,8 +1,24 @@
-// Chat Feature Module
-// This file serves as the public API for the chat feature
+/**
+ * Chat Feature Entry Point
+ * 
+ * Features self-register here during module initialization.
+ * No changes needed in core when adding this feature!
+ */
 
-// Initialize DI container for this feature
-import './di/container';
+import { featureRegistry } from '../../core/di/featureRegistry';
+
+// Self-register this feature with the registry
+featureRegistry.register({
+    name: 'chat',
+    description: 'Real-time chat messaging',
+    version: '1.0.0',
+    loader: async () => {
+        const module = await import('./di/chat.module');
+        return module.ChatFeatureModule;
+    },
+    dependencies: ['user'], // Chat needs user profiles
+    tags: ['messaging', 'realtime'],
+});
 
 // Export types
 export { ChatTypes } from './di/types';
@@ -17,9 +33,5 @@ export { ChatScreen } from './ui/ChatScreen';
 export { ChatNavigator, ChatRoutes } from './navigation/navigation';
 export type { ChatStackParamList } from './navigation/navigation';
 
-// Optional: Export a feature initialization function
-export const initChatFeature = () => {
-    console.log('Chat feature initialized');
-    // Any additional setup logic can go here
-};
-
+// Note: Feature is registered but NOT loaded yet (lazy loading)
+// It will load when first accessed via ensureFeatureLoaded('chat')

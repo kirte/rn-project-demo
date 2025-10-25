@@ -3,11 +3,16 @@
  * 
  * This file defines the navigation structure for the auth feature.
  * Each feature manages its own navigation stack and route types.
+ * 
+ * Note: Feature module is registered when navigator is imported for lazy loading
  */
 
-// CRITICAL: Import DI container FIRST before importing screens
-// This ensures AuthRepository is registered before LoginScreen loads
-import '../di/container';
+// Import and register feature module
+import { registerAuthModule } from '../di/auth.module';
+import { container } from '../../../core/di/container';
+
+// Register auth module when navigator is imported
+registerAuthModule(container);
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';

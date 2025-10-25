@@ -2,11 +2,16 @@
  * Admin Feature Navigation
  * 
  * This file defines the navigation structure for the admin feature.
+ * 
+ * Note: Feature module is registered when navigator is imported for lazy loading
  */
 
-// CRITICAL: Import DI container FIRST before importing screens
-// This ensures AdminRepository is registered before AdminScreen loads
-import '../di/container';
+// Import and register feature module
+import { registerAdminModule } from '../di/admin.module';
+import { container } from '../../../core/di/container';
+
+// Register admin module when navigator is imported
+registerAdminModule(container);
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';

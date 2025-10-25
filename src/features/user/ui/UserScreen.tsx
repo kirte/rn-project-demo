@@ -1,13 +1,40 @@
 import React from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useService } from '../../../core/hooks/useService';
+import { useFeatureService } from '../../../core/hooks/useService';
 import { UserRepository } from '../repositories/UserRepository';
 import { UserTypes } from '../di/types';
 import { useUserViewModel } from '../viewmodels/UserViewModel';
+import { NotificationTypes, NotificationType } from '../../notifications';
+import { NotificationService } from '../../notifications';
 
 export const UserScreen: React.FC = () => {
   const userRepo = useService<UserRepository>(UserTypes.UserRepository);
   const viewModel = useUserViewModel(userRepo);
+
+  // ✅ Dynamically load notifications feature
+  const { service: notificationService, isLoading: isNotifLoading } = useFeatureService<NotificationService>(
+    'notifications',
+    NotificationTypes.NotificationService
+  );
+
+  const handleSendNotification = () => {
+    if (!notificationService) {
+      Alert.alert('Feature Loading', 'Notifications feature is still loading...');
+      return;
+    }
+
+    // ✅ Call notifications API from User feature!
+    notificationService.addNotification(
+      'Profile Viewed',
+      `${viewModel.user?.name || 'Someone'} viewed their profile`,
+      NotificationType.USER,
+      viewModel.user?.id,
+      { source: 'UserScreen', action: 'profile_view' }
+    );
+
+    Alert.alert('Success', 'Notification sent! Check the Notifications tab.');
+  };
 
   if (viewModel.isLoading && !viewModel.user) {
     return (
@@ -45,6 +72,25 @@ export const UserScreen: React.FC = () => {
         </View>
         <Text style={styles.name}>{viewModel.user?.name || 'Unknown'}</Text>
         <Text style={styles.username}>@{viewModel.user?.username || 'user'}</Text>
+      </View>
+
+      {/* ✅ Example: Call notification feature dynamically */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={[styles.notificationButton, isNotifLoading && styles.notificationButtonDisabled]}
+          onPress={handleSendNotification}
+          disabled={isNotifLoading}
+        >
+          <Text style={styles.notificationButtonIcon}>🔔</Text>
+          <View style={styles.notificationButtonContent}>
+            <Text style={styles.notificationButtonText}>
+              {isNotifLoading ? 'Loading Notifications...' : 'Send Profile View Notification'}
+            </Text>
+            <Text style={styles.notificationButtonSubtext}>
+              Test cross-feature API call
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -214,5 +260,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
+  },
+  notificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  notificationButtonDisabled: {
+    opacity: 0.6,
+  },
+  notificationButtonIcon: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  notificationButtonContent: {
+    flex: 1,
+  },
+  notificationButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  notificationButtonSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 });

@@ -2,11 +2,16 @@
  * User Feature Navigation
  * 
  * This file defines the navigation structure for the user feature.
+ * 
+ * Note: Feature module is registered when navigator is imported for lazy loading
  */
 
-// CRITICAL: Import DI container FIRST before importing screens
-// This ensures UserRepository is registered before UserScreen loads
-import '../di/container';
+// Import and register feature module
+import { registerUserModule } from '../di/user.module';
+import { container } from '../../../core/di/container';
+
+// Register user module when navigator is imported
+registerUserModule(container);
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';

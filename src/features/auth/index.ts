@@ -1,8 +1,23 @@
-// Auth Feature Module
-// This file serves as the public API for the auth feature
+/**
+ * Auth Feature Entry Point
+ * 
+ * Features self-register here during module initialization.
+ * No changes needed in core when adding this feature!
+ */
 
-// Initialize DI container for this feature
-import './di/container';
+import { featureRegistry } from '../../core/di/featureRegistry';
+
+// Self-register this feature with the registry
+featureRegistry.register({
+    name: 'auth',
+    description: 'Authentication and authorization',
+    version: '1.0.0',
+    loader: async () => {
+        const module = await import('./di/auth.module');
+        return module.AuthFeatureModule;
+    },
+    tags: ['core', 'security'],
+});
 
 // Export types
 export { AuthTypes } from './di/types';
@@ -17,9 +32,5 @@ export { AuthRepository } from './repositories/AuthRepository';
 export { AuthNavigator, AuthRoutes } from './navigation/navigation';
 export type { AuthStackParamList } from './navigation/navigation';
 
-// Optional: Export a feature initialization function
-export const initAuthFeature = () => {
-    console.log('Auth feature initialized');
-    // Any additional setup logic can go here
-};
-
+// Note: Feature is registered but NOT loaded yet (lazy loading)
+// It will load when first accessed via ensureFeatureLoaded('auth')
