@@ -304,33 +304,395 @@ npx react-native start --reset-cache
 
 ## Adding Your Own Feature
 
-```typescript
-// 1. Create feature directory
-mkdir -p src/features/myfeature/{di,models,services,ui}
+### Step-by-Step Guide
 
-// 2. Create DI module (myfeature.module.ts)
-export const MyFeatureModule: FeatureModule = {
-  name: 'myfeature',
-  register: (container) => {
-    container.bind(MyFeatureTypes.MyService)
-      .to(MyService)
-      .inSingletonScope();
-  },
+#### Step 1: Create Feature Structure
+
+```bash
+mkdir -p src/features/products/{di,models,services,repositories,ui,navigation,viewmodels}
+```
+
+#### Step 2: Create DI Types
+
+```typescript
+// src/features/products/di/types.ts
+export const ProductTypes = {
+  ProductRepository: Symbol.for('ProductRepository'),
+  ProductService: Symbol.for('ProductService'),
+} as const;
+```
+
+#### Step 3: Create Models
+
+```typescript
+// src/features/products/models/ProductModel.ts
+export interface Product {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+}
+```
+
+#### Step 4: Create Repository
+
+```typescript
+// src/features/products/repositories/ProductRepository.ts
+import { injectable } from 'inversify';
+import { ApiService } from '../../../core/api/ApiService';
+import { ApiResult } from '../../../core/api/ApiResult';
+import { Product } from '../models/ProductModel';
+
+export class ProductRepository {
+  constructor(private api: ApiService) {}
+
+  async getProducts(): Promise<ApiResult<Product[]>> {
+    return this.api.get<Product[]>('/products');
+  }
+
+  async getProduct(id: number): Promise<ApiResult<Product>> {
+    return this.api.get<Product>(`/products/${id}`);
+  }
+}
+```
+
+#### Step 5: Create Service (Optional - if needed)
+
+```typescript
+// src/features/products/services/ProductService.ts
+import { injectable } from 'inversify';
+import { Product } from '../models/ProductModel';
+
+@injectable()
+export class ProductService {
+  private cart: Product[] = [];
+
+  addToCart(product: Product): void {
+    this.cart.push(product);
+  }
+
+  getCart(): Product[] {
+    return this.cart;
+  }
+
+  clearCart(): void {
+    this.cart = [];
+  }
+}
+```
+
+#### Step 6: Create ViewModel
+
+```typescript
+// src/features/products/viewmodels/ProductViewModel.ts
+import { useState, useEffect } from 'react';
+import { ProductRepository } from '../repositories/ProductRepository';
+import { Product } from '../models/ProductModel';
+
+export const useProductViewModel = (repository: ProductRepository) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadProducts = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    const result = await repository.getProducts();
+    
+    if (result.success) {
+      setProducts(result.data);
+    } else {
+      setError(result.error);
+    }
+    
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  return {
+    products,
+    isLoading,
+    error,
+    refresh: loadProducts,
+  };
+};
+```
+
+#### Step 7: Create UI Screens
+
+```typescript
+// src/features/products/ui/ProductListScreen.tsx
+import React from 'react';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { useService } from '../../../core/hooks/useService';
+import { ProductTypes } from '../di/types';
+import { ProductRepository } from '../repositories/ProductRepository';
+import { useProductViewModel } from '../viewmodels/ProductViewModel';
+
+export const ProductListScreen = () => {
+  const repository = useService<ProductRepository>(ProductTypes.ProductRepository);
+  const viewModel = useProductViewModel(repository);
+
+  if (viewModel.isLoading) {
+    return <ActivityIndicator />;
+  }
+
+  if (viewModel.error) {
+    return <Text>Error: {viewModel.error}</Text>;
+  }
+
+  return (
+    <FlatList
+      data={viewModel.products}
+      renderItem={({ item }) => (
+        <View style={styles.item}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.price}>${item.price}</Text>
+        </View>
+      )}
+      keyExtractor={(item) => item.id.toString()}
+    />
+  );
 };
 
-// 3. Self-register (index.ts)
+const styles = StyleSheet.create({
+  item: { padding: 16, borderBottomWidth: 1 },
+  name: { fontSize: 16, fontWeight: '600' },
+  price: { fontSize: 14, color: '#666', marginTop: 4 },
+});
+```
+
+```typescript
+// src/features/products/ui/ProductDetailScreen.tsx
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+export const ProductDetailScreen = ({ route }) => {
+  const { productId } = route.params;
+
+  return (
+    <View style={styles.container}>
+      <Text>Product Detail: {productId}</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+});
+```
+
+#### Step 8: Create Navigation
+
+```typescript
+// src/features/products/navigation/navigation.tsx
+import { registerProductModule } from '../di/product.module';
+import { container } from '../../../core/di/container';
+
+// Register module when navigator is imported
+registerProductModule(container);
+
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ProductListScreen } from '../ui/ProductListScreen';
+import { ProductDetailScreen } from '../ui/ProductDetailScreen';
+
+export type ProductStackParamList = {
+  ProductList: undefined;
+  ProductDetail: { productId: number };
+};
+
+const Stack = createNativeStackNavigator<ProductStackParamList>();
+
+export const ProductNavigator: React.FC = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="ProductList" 
+        component={ProductListScreen}
+        options={{ title: 'Products' }}
+      />
+      <Stack.Screen 
+        name="ProductDetail" 
+        component={ProductDetailScreen}
+        options={{ title: 'Product Details' }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+export const ProductRoutes = {
+  ProductList: 'ProductList',
+  ProductDetail: 'ProductDetail',
+} as const;
+```
+
+#### Step 9: Create DI Module
+
+```typescript
+// src/features/products/di/product.module.ts
+import { Container } from 'inversify';
+import { FeatureModule } from '../../../core/di/featureRegistry';
+import { ProductTypes } from './types';
+import { ProductRepository } from '../repositories/ProductRepository';
+import { ProductService } from '../services/ProductService';
+import { CoreTypes } from '../../../core/di/types';
+
+let isRegistered = false;
+
+function registerProductModule(container: Container): void {
+  if (isRegistered) {
+    console.log('[ProductModule] Already registered, skipping');
+    return;
+  }
+
+  // Register ProductRepository with ApiService dependency
+  if (!container.isBound(ProductTypes.ProductRepository)) {
+    container.bind(ProductTypes.ProductRepository)
+      .toDynamicValue((context) => {
+        const apiService = context.container.get(CoreTypes.ApiService);
+        return new ProductRepository(apiService);
+      })
+      .inSingletonScope();
+  }
+
+  // Register ProductService (no dependencies)
+  if (!container.isBound(ProductTypes.ProductService)) {
+    container.bind(ProductTypes.ProductService)
+      .to(ProductService)
+      .inSingletonScope();
+  }
+
+  isRegistered = true;
+  console.log('[ProductModule] ✅ Registered successfully');
+}
+
+export const ProductFeatureModule: FeatureModule = {
+  name: 'products',
+  register: registerProductModule,
+};
+
+export { registerProductModule, ProductTypes };
+```
+
+#### Step 10: Create Feature Entry Point (Self-Registration)
+
+```typescript
+// src/features/products/index.ts
+import { featureRegistry } from '../../core/di/featureRegistry';
+
+// Self-register this feature
 featureRegistry.register({
-  name: 'myfeature',
-  description: 'My awesome feature',
-  loader: async () => import('./di/myfeature.module'),
+  name: 'products',
+  description: 'Product catalog and shopping',
+  version: '1.0.0',
+  loader: async () => {
+    const module = await import('./di/product.module');
+    return module.ProductFeatureModule;
+  },
+  dependencies: ['auth'], // Optional: depends on auth
+  tags: ['shopping', 'catalog'],
 });
 
-// 4. Import in App.tsx
-import './features/myfeature';
-
-// Done! Use anywhere:
-const { service } = useFeatureService('myfeature', MyFeatureTypes.MyService);
+// Export public API
+export { ProductTypes } from './di/types';
+export { ProductRepository } from './repositories/ProductRepository';
+export { ProductService } from './services/ProductService';
+export type { Product } from './models/ProductModel';
+export { ProductListScreen } from './ui/ProductListScreen';
+export { ProductDetailScreen } from './ui/ProductDetailScreen';
+export { ProductNavigator, ProductRoutes } from './navigation/navigation';
+export type { ProductStackParamList } from './navigation/navigation';
 ```
+
+#### Step 11: Import Feature in App.tsx
+
+```typescript
+// src/App.tsx
+import './core/di/container';
+
+import './features/auth';
+import './features/user';
+import './features/admin';
+import './features/chat';
+import './features/notifications';
+import './features/products';  // ✅ Add this line
+
+import React from 'react';
+import { AppNavigation } from './navigation';
+
+export default function App() {
+  return <AppNavigation />;
+}
+```
+
+#### Step 12: Add to Navigation (Optional)
+
+```typescript
+// src/navigation/RootNavigator.tsx
+import { ProductNavigator } from '../features/products';
+
+const MainTabNavigator = () => (
+  <Tab.Navigator>
+    <Tab.Screen name="UserTab" component={UserNavigator} />
+    <Tab.Screen name="AdminTab" component={AdminNavigator} />
+    <Tab.Screen name="ChatTab" component={ChatScreen} />
+    <Tab.Screen name="NotificationsTab" component={NotificationNavigator} />
+    {/* ✅ Add products tab */}
+    <Tab.Screen 
+      name="ProductsTab" 
+      component={ProductNavigator}
+      options={{ title: 'Products' }}
+    />
+  </Tab.Navigator>
+);
+```
+
+### Done! 🎉
+
+Your feature is now:
+- ✅ Self-registered and discoverable
+- ✅ Lazy-loaded on first access
+- ✅ Has proper DI setup
+- ✅ Has navigation stack
+- ✅ Has ViewModels for business logic
+- ✅ Has type-safe API calls
+- ✅ Can be called from other features
+
+### Use from Another Feature
+
+```typescript
+// Call products API from any other feature
+const { service: productRepo, isLoading } = useFeatureService<ProductRepository>(
+  'products',
+  ProductTypes.ProductRepository
+);
+
+if (!isLoading) {
+  const result = await productRepo.getProducts();
+}
+```
+
+### Feature Checklist
+
+- [ ] Created folder structure
+- [ ] Defined DI types
+- [ ] Created models
+- [ ] Created repository with API calls
+- [ ] Created service (if needed)
+- [ ] Created ViewModels
+- [ ] Created UI screens
+- [ ] Created navigation stack
+- [ ] Created DI module
+- [ ] Self-registered in index.ts
+- [ ] Imported in App.tsx
+- [ ] Added to main navigation (if needed)
+- [ ] Tested feature loading
+- [ ] Tested cross-feature calls
 
 ## License
 
